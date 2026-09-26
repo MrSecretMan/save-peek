@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/MrSecretMan/save-peek/internal/stardew"
@@ -54,7 +53,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           webui.Server{Save: save}.Handler(),
+		Handler:           (&webui.Server{Save: save}).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
@@ -72,8 +71,8 @@ func localIPv4() []string {
 		}
 		addrs, _ := iface.Addrs()
 		for _, addr := range addrs {
-			ip := net.ParseIP(strings.Split(addr.String(), "/")[0])
-			if ip != nil && ip.To4() != nil {
+			ip, _, err := net.ParseCIDR(addr.String())
+			if err == nil && ip.To4() != nil {
 				out = append(out, ip.String())
 			}
 		}
