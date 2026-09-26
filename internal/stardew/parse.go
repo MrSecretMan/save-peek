@@ -26,7 +26,7 @@ func Parse(save Save) (Progress, error) {
 func parseXML(r io.Reader) (Progress, error) {
 	dec := xml.NewDecoder(r)
 	var p Progress
-	var text bytes.Buffer
+	var text []byte
 
 	depth := 0
 	achievementDepth := 0
@@ -64,18 +64,18 @@ func parseXML(r io.Reader) (Progress, error) {
 			if shouldCapture(name, p.PlayerName == "", achievementDepth, friendshipDepth, keyDepth, depth) {
 				captureDepth = depth
 				captureName = name
-				text.Reset()
+				text = text[:0]
 			}
 
 		case xml.CharData:
 			if captureDepth == depth {
-				_, _ = text.Write(t)
+				text = append(text, t...)
 			}
 
 		case xml.EndElement:
 			name := t.Name.Local
 			if captureDepth == depth && captureName == name {
-				value := bytes.TrimSpace(text.Bytes())
+				value := bytes.TrimSpace(text)
 				if len(value) > 0 {
 					switch name {
 					case "name":
@@ -120,7 +120,7 @@ func parseXML(r io.Reader) (Progress, error) {
 				}
 				captureDepth = 0
 				captureName = ""
-				text.Reset()
+				text = text[:0]
 			}
 
 			if name == "item" && friendshipDepth > 0 && friendName != "" {
@@ -165,6 +165,12 @@ func shouldCapture(name string, needPlayerName bool, achievementDepth, friendshi
 
 func addTopFriend(top []Friend, friend Friend) []Friend {
 	const limit = 8
+	if cap(top) < limit {
+		grown := make([]Friend, len(top), limit)
+		copy(grown, top)
+		top = grown
+	}
+
 	at := len(top)
 	for i := range top {
 		if friend.Points > top[i].Points || (friend.Points == top[i].Points && friend.Name < top[i].Name) {
