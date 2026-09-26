@@ -1,13 +1,11 @@
 package stardew
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"os"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 func Parse(save Save) (Progress, error) {
@@ -28,49 +26,16 @@ func Parse(save Save) (Progress, error) {
 func parseXML(r io.Reader) (Progress, error) {
 	dec := xml.NewDecoder(r)
 	var p Progress
-	var path []string
-	var text strings.Builder
-	var achievementDepth int
-	var friendshipDepth int
-	var friendName string
-	var friendPoints int
+	var text bytes.Buffer
 
-	flush := func(name string) {
-		value := strings.TrimSpace(text.String())
-		text.Reset()
-		if value == "" {
-			return
-		}
-
-		switch name {
-		case "name":
-			if p.PlayerName == "" && !inside(path, "friendshipData") {
-				p.PlayerName = value
-			}
-		case "farmName":
-			p.FarmName = value
-		case "money":
-			p.Money = int64Value(value)
-		case "currentSeason":
-			p.Season = title(value)
-		case "dayOfMonth":
-			p.Day = intValue(value)
-		case "year":
-			p.Year = intValue(value)
-		case "millisecondsPlayed":
-			p.PlayTime = int64Value(value)
-		case "farmingLevel":
-			p.Skills.Farming = intValue(value)
-		case "fishingLevel":
-			p.Skills.Fishing = intValue(value)
-		case "foragingLevel":
-			p.Skills.Foraging = intValue(value)
-		case "miningLevel":
-			p.Skills.Mining = intValue(value)
-		case "combatLevel":
-			p.Skills.Combat = intValue(value)
-		}
-	}
+	depth := 0
+	achievementDepth := 0
+	friendshipDepth := 0
+	keyDepth := 0
+	captureDepth := 0
+	captureName := ""
+	friendName := ""
+	friendPoints := 0
 
 	for {
 		tok, err := dec.RawToken()
@@ -83,87 +48,168 @@ func parseXML(r io.Reader) (Progress, error) {
 
 		switch t := tok.(type) {
 		case xml.StartElement:
-			path = append(path, t.Name.Local)
-			text.Reset()
-			if t.Name.Local == "achievements" {
-				achievementDepth = len(path)
+			depth++
+			name := t.Name.Local
+
+			if name == "achievements" && achievementDepth == 0 {
+				achievementDepth = depth
 			}
-			if t.Name.Local == "friendshipData" {
-				friendshipDepth = len(path)
+			if name == "friendshipData" && friendshipDepth == 0 {
+				friendshipDepth = depth
 			}
+			if name == "key" && friendshipDepth > 0 && keyDepth == 0 {
+				keyDepth = depth
+			}
+
+			if shouldCapture(name, p.PlayerName == "", achievementDepth, friendshipDepth, keyDepth, depth) {
+				captureDepth = depth
+				captureName = name
+				text.Reset()
+			}
+
 		case xml.CharData:
-			text.Write([]byte(t))
+			if captureDepth == depth {
+				_, _ = text.Write(t)
+			}
+
 		case xml.EndElement:
 			name := t.Name.Local
-			value := strings.TrimSpace(text.String())
-
-			if achievementDepth > 0 && len(path) > achievementDepth && name == "int" && value != "" {
-				p.Achievements++
+			if captureDepth == depth && captureName == name {
+				value := bytes.TrimSpace(text.Bytes())
+				if len(value) > 0 {
+					switch name {
+					case "name":
+						if p.PlayerName == "" && friendshipDepth == 0 {
+							p.PlayerName = string(value)
+						}
+					case "farmName":
+						p.FarmName = string(value)
+					case "money":
+						p.Money = int64ValueBytes(value)
+					case "currentSeason":
+						p.Season = seasonName(value)
+					case "dayOfMonth":
+						p.Day = int(int64ValueBytes(value))
+					case "year":
+						p.Year = int(int64ValueBytes(value))
+					case "millisecondsPlayed":
+						p.PlayTime = int64ValueBytes(value)
+					case "farmingLevel":
+						p.Skills.Farming = int(int64ValueBytes(value))
+					case "fishingLevel":
+						p.Skills.Fishing = int(int64ValueBytes(value))
+					case "foragingLevel":
+						p.Skills.Foraging = int(int64ValueBytes(value))
+					case "miningLevel":
+						p.Skills.Mining = int(int64ValueBytes(value))
+					case "combatLevel":
+						p.Skills.Combat = int(int64ValueBytes(value))
+					case "int":
+						if achievementDepth > 0 && depth > achievementDepth {
+							p.Achievements++
+						}
+					case "string":
+						if friendshipDepth > 0 && keyDepth > 0 {
+							friendName = string(value)
+						}
+					case "Points", "points":
+						if friendshipDepth > 0 {
+							friendPoints = int(int64ValueBytes(value))
+						}
+					}
+				}
+				captureDepth = 0
+				captureName = ""
+				text.Reset()
 			}
 
-			if friendshipDepth > 0 {
-				if name == "string" && inside(path, "key") && value != "" {
-					friendName = value
-				}
-				if name == "Points" || name == "points" {
-					friendPoints = intValue(value)
-				}
-				if name == "item" && friendName != "" {
-					p.Relationships = append(p.Relationships, Friend{
-						Name: friendName, Points: friendPoints, Hearts: friendPoints / 250,
-					})
-					friendName, friendPoints = "", 0
-				}
+			if name == "item" && friendshipDepth > 0 && friendName != "" {
+				p.Relationships = addTopFriend(p.Relationships, Friend{
+					Name: friendName, Points: friendPoints, Hearts: friendPoints / 250,
+				})
+				friendName, friendPoints = "", 0
 			}
-
-			flush(name)
-			if achievementDepth == len(path) && name == "achievements" {
+			if name == "key" && keyDepth == depth {
+				keyDepth = 0
+			}
+			if name == "achievements" && achievementDepth == depth {
 				achievementDepth = 0
 			}
-			if friendshipDepth == len(path) && name == "friendshipData" {
+			if name == "friendshipData" && friendshipDepth == depth {
 				friendshipDepth = 0
 			}
-			if len(path) > 0 {
-				path = path[:len(path)-1]
-			}
-			text.Reset()
+			depth--
 		}
 	}
 
-	sort.Slice(p.Relationships, func(i, j int) bool {
-		if p.Relationships[i].Points == p.Relationships[j].Points {
-			return p.Relationships[i].Name < p.Relationships[j].Name
-		}
-		return p.Relationships[i].Points > p.Relationships[j].Points
-	})
-	if len(p.Relationships) > 8 {
-		p.Relationships = p.Relationships[:8]
-	}
 	return p, nil
 }
 
-func inside(path []string, want string) bool {
-	for _, part := range path {
-		if part == want {
-			return true
+func shouldCapture(name string, needPlayerName bool, achievementDepth, friendshipDepth, keyDepth, depth int) bool {
+	switch name {
+	case "farmName", "money", "currentSeason", "dayOfMonth", "year", "millisecondsPlayed",
+		"farmingLevel", "fishingLevel", "foragingLevel", "miningLevel", "combatLevel":
+		return true
+	case "name":
+		return needPlayerName && friendshipDepth == 0
+	case "int":
+		return achievementDepth > 0 && depth > achievementDepth
+	case "string":
+		return friendshipDepth > 0 && keyDepth > 0
+	case "Points", "points":
+		return friendshipDepth > 0
+	default:
+		return false
+	}
+}
+
+func addTopFriend(top []Friend, friend Friend) []Friend {
+	const limit = 8
+	at := len(top)
+	for i := range top {
+		if friend.Points > top[i].Points || (friend.Points == top[i].Points && friend.Name < top[i].Name) {
+			at = i
+			break
 		}
 	}
-	return false
-}
-
-func intValue(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
-}
-
-func int64Value(s string) int64 {
-	n, _ := strconv.ParseInt(s, 10, 64)
-	return n
-}
-
-func title(s string) string {
-	if s == "" {
-		return s
+	if at >= limit {
+		return top
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	if len(top) < limit {
+		top = append(top, Friend{})
+	}
+	copy(top[at+1:], top[at:len(top)-1])
+	top[at] = friend
+	return top
+}
+
+func int64ValueBytes(b []byte) int64 {
+	var n int64
+	sign := int64(1)
+	if len(b) > 0 && b[0] == '-' {
+		sign = -1
+		b = b[1:]
+	}
+	for _, c := range b {
+		if c < '0' || c > '9' {
+			return 0
+		}
+		n = n*10 + int64(c-'0')
+	}
+	return n * sign
+}
+
+func seasonName(b []byte) string {
+	switch {
+	case bytes.Equal(b, []byte("spring")):
+		return "Spring"
+	case bytes.Equal(b, []byte("summer")):
+		return "Summer"
+	case bytes.Equal(b, []byte("fall")):
+		return "Fall"
+	case bytes.Equal(b, []byte("winter")):
+		return "Winter"
+	default:
+		return string(b)
+	}
 }

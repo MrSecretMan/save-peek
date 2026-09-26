@@ -43,3 +43,40 @@ func BenchmarkParseXML(b *testing.B) {
 		}
 	}
 }
+
+func TestParseKeepsOnlyTopEightRelationships(t *testing.T) {
+	var s strings.Builder
+	s.WriteString(`<SaveGame><player><name>A</name><friendshipData>`)
+	for i := 0; i < 10; i++ {
+		s.WriteString(`<item><key><string>Friend`)
+		s.WriteString(string(rune('A' + i)))
+		s.WriteString(`</string></key><value><Friendship><Points>`)
+		s.WriteString([]string{"250", "2500", "500", "2250", "750", "2000", "1000", "1750", "1250", "1500"}[i])
+		s.WriteString(`</Points></Friendship></value></item>`)
+	}
+	s.WriteString(`</friendshipData></player></SaveGame>`)
+
+	p, err := parseXML(strings.NewReader(s.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Relationships) != 8 {
+		t.Fatalf("got %d relationships", len(p.Relationships))
+	}
+	if p.Relationships[0].Name != "FriendB" || p.Relationships[0].Points != 2500 {
+		t.Fatalf("first relationship = %#v", p.Relationships[0])
+	}
+	if p.Relationships[7].Name != "FriendE" || p.Relationships[7].Points != 750 {
+		t.Fatalf("last relationship = %#v", p.Relationships[7])
+	}
+}
+
+func TestParseDecodesEscapedNames(t *testing.T) {
+	p, err := parseXML(strings.NewReader(`<SaveGame><player><name>A &amp; B</name></player><farmName>Rock &amp; Roll</farmName></SaveGame>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.PlayerName != "A & B" || p.FarmName != "Rock & Roll" {
+		t.Fatalf("names = %q / %q", p.PlayerName, p.FarmName)
+	}
+}

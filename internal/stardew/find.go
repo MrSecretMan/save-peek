@@ -77,7 +77,7 @@ func latestIn(root string) (Save, bool, error) {
 			continue
 		}
 
-		save := Save{Path: main, Folder: entry.Name(), ModifiedAt: info.ModTime()}
+		save := Save{Path: main, Folder: entry.Name(), ModifiedAt: info.ModTime(), Size: info.Size()}
 		if !found || save.ModifiedAt.After(latest.ModifiedAt) {
 			latest = save
 			found = true
