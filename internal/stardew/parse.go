@@ -73,7 +73,7 @@ func parseXML(r io.Reader) (Progress, error) {
 	}
 
 	for {
-		tok, err := dec.Token()
+		tok, err := dec.RawToken()
 		if err == io.EOF {
 			break
 		}
@@ -109,7 +109,9 @@ func parseXML(r io.Reader) (Progress, error) {
 					friendPoints = intValue(value)
 				}
 				if name == "item" && friendName != "" {
-					p.Relationships = append(p.Relationships, Friend{Name: friendName, Points: friendPoints, Hearts: friendPoints / 250})
+					p.Relationships = append(p.Relationships, Friend{
+						Name: friendName, Points: friendPoints, Hearts: friendPoints / 250,
+					})
 					friendName, friendPoints = "", 0
 				}
 			}

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 )
 
@@ -25,7 +24,6 @@ func DefaultSaveDirs() []string {
 	}
 
 	if home != "" {
-		// Harmless fallback for copied/synced saves and unusual installs.
 		dirs = append(dirs, filepath.Join(home, "StardewValley", "Saves"))
 	}
 	return unique(dirs)
@@ -37,34 +35,38 @@ func FindLatest(extraDir string) (Save, error) {
 		dirs = append([]string{extraDir}, dirs...)
 	}
 
-	var saves []Save
+	var latest Save
+	found := false
 	for _, dir := range unique(dirs) {
-		found, err := findIn(dir)
-		if err == nil {
-			saves = append(saves, found...)
+		save, ok, err := latestIn(dir)
+		if err != nil || !ok {
+			continue
+		}
+		if !found || save.ModifiedAt.After(latest.ModifiedAt) {
+			latest = save
+			found = true
 		}
 	}
-	if len(saves) == 0 {
+
+	if !found {
 		return Save{}, errors.New("no Stardew Valley saves found")
 	}
-
-	sort.Slice(saves, func(i, j int) bool {
-		return saves[i].ModifiedAt.After(saves[j].ModifiedAt)
-	})
-	return saves[0], nil
+	return latest, nil
 }
 
-func findIn(root string) ([]Save, error) {
+func latestIn(root string) (Save, bool, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return nil, err
+		return Save{}, false, err
 	}
 
-	var saves []Save
+	var latest Save
+	found := false
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
+
 		folder := filepath.Join(root, entry.Name())
 		main, err := mainSaveFile(folder, entry.Name())
 		if err != nil {
@@ -74,9 +76,14 @@ func findIn(root string) ([]Save, error) {
 		if err != nil {
 			continue
 		}
-		saves = append(saves, Save{Path: main, Folder: entry.Name(), ModifiedAt: info.ModTime()})
+
+		save := Save{Path: main, Folder: entry.Name(), ModifiedAt: info.ModTime()}
+		if !found || save.ModifiedAt.After(latest.ModifiedAt) {
+			latest = save
+			found = true
+		}
 	}
-	return saves, nil
+	return latest, found, nil
 }
 
 func mainSaveFile(folder, folderName string) (string, error) {

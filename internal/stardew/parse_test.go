@@ -1,17 +1,19 @@
 package stardew
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
 
-func TestParseXML(t *testing.T) {
-	xml := `<SaveGame>
+const sampleSave = `<SaveGame>
 <player><name>Jepson</name><farmingLevel>9</farmingLevel><fishingLevel>7</fishingLevel><foragingLevel>6</foragingLevel><miningLevel>8</miningLevel><combatLevel>5</combatLevel><money>84233</money><millisecondsPlayed>9000000</millisecondsPlayed><achievements><int>1</int><int>2</int></achievements><friendshipData><item><key><string>Leah</string></key><value><Friendship><Points>1750</Points></Friendship></value></item></friendshipData></player>
+<locations><GameLocation><name>Farm</name></GameLocation></locations>
 <farmName>Cranberry</farmName><currentSeason>fall</currentSeason><dayOfMonth>18</dayOfMonth><year>2</year>
 </SaveGame>`
 
-	p, err := parseXML(strings.NewReader(xml))
+func TestParseXML(t *testing.T) {
+	p, err := parseXML(strings.NewReader(sampleSave))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,5 +28,18 @@ func TestParseXML(t *testing.T) {
 	}
 	if len(p.Relationships) != 1 || p.Relationships[0].Name != "Leah" || p.Relationships[0].Hearts != 7 {
 		t.Fatalf("relationships: %#v", p.Relationships)
+	}
+}
+
+func BenchmarkParseXML(b *testing.B) {
+	data := []byte(sampleSave)
+	r := bytes.NewReader(data)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.Reset(data)
+		if _, err := parseXML(r); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
