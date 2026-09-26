@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#11130f">
+  <title>SavePeek</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>SavePeek</h1>
+        <p id="source">reading save…</p>
+      </div>
+      <button id="refresh" type="button">refresh</button>
+    </header>
+
+    <section id="hero" class="card hero skeleton">
+      <div><span class="label">latest farm</span><h2 id="farm">—</h2><p id="date">—</p></div>
+      <div class="money"><span>money</span><strong id="money">—</strong></div>
+    </section>
+
+    <section class="grid">
+      <article class="card"><span class="label">skills</span><div id="skills" class="skills"></div></article>
+      <article class="card">
+        <span class="label">save</span>
+        <dl>
+          <div><dt>player</dt><dd id="player">—</dd></div>
+          <div><dt>achievements</dt><dd id="achievements">—</dd></div>
+          <div><dt>play time</dt><dd id="playtime">—</dd></div>
+          <div><dt>updated</dt><dd id="updated">—</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="card relationships">
+      <span class="label">closest relationships</span>
+      <div id="friends" class="friend-list"><p class="quiet">No relationship data found.</p></div>
+    </section>
+
+    <p class="foot">read-only · nothing leaves this machine</p>
+    <p id="error" class="error" hidden></p>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
