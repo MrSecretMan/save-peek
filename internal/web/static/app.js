@@ -50,7 +50,7 @@ function render(data) {
 async function load() {
   $('error').hidden = true
   try {
-    const response = await fetch('/api/save', { cache: 'no-store' })
+    const response = await fetch('/api/save', { cache: 'no-cache' })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     render(await response.json())
   } catch (err) {

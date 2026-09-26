@@ -6,6 +6,7 @@ type Save struct {
 	Path       string    `json:"-"`
 	Folder     string    `json:"folder"`
 	ModifiedAt time.Time `json:"modified_at"`
+	Size       int64     `json:"-"`
 }
 
 type Progress struct {

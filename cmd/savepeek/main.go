@@ -53,7 +53,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           (&webui.Server{Save: save}).Handler(),
+		Handler:           webui.NewServer(save, progress).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
