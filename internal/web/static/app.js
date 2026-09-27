@@ -24,7 +24,17 @@ function render(data) {
   $('player').textContent = data.player_name || 'unknown'
   $('achievements').textContent = data.achievements
   $('playtime').textContent = duration(data.play_time_ms)
-  $('updated').textContent = when(data.source.modified_at)\n\n  const recs = data.recommendations || []\n  $('next').hidden = recs.length === 0\n  if (recs.length) {\n    $('next-title').textContent = recs[0].title\n    $('next-reason').textContent = recs[0].reason\n    $('next-more').innerHTML = recs.slice(1).map(rec => `\n      <div class="next-item"><b>${rec.title}</b><span>${rec.reason}</span></div>\n    `).join('')\n  }
+  $('updated').textContent = when(data.source.modified_at)
+
+  const recs = data.recommendations || []
+  $('next').hidden = recs.length === 0
+  if (recs.length) {
+    $('next-title').textContent = recs[0].title
+    $('next-reason').textContent = recs[0].reason
+    $('next-more').innerHTML = recs.slice(1).map(rec => `
+      <div class="next-item"><b>${rec.title}</b><span>${rec.reason}</span></div>
+    `).join('')
+  }
 
   const skills = [
     ['farming', data.skills.farming],
