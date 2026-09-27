@@ -26,6 +26,16 @@ function render(data) {
   $('playtime').textContent = duration(data.play_time_ms)
   $('updated').textContent = when(data.source.modified_at)
 
+  const recs = data.recommendations || []
+  $('next').hidden = recs.length === 0
+  if (recs.length) {
+    $('next-title').textContent = recs[0].title
+    $('next-reason').textContent = recs[0].reason
+    $('next-more').innerHTML = recs.slice(1).map(rec => `
+      <div class="next-item"><b>${rec.title}</b><span>${rec.reason}</span></div>
+    `).join('')
+  }
+
   const skills = [
     ['farming', data.skills.farming],
     ['mining', data.skills.mining],

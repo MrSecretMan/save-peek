@@ -20,6 +20,7 @@ func Parse(save Save) (Progress, error) {
 		return Progress{}, fmt.Errorf("parse %s: %w", save.Folder, err)
 	}
 	p.Source = Source{Folder: save.Folder, ModifiedAt: save.ModifiedAt}
+	addRecommendations(&p)
 	return p, nil
 }
 

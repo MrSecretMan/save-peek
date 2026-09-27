@@ -25,7 +25,7 @@ button:hover { border-color: #46503f; }
 .money { text-align: right; }
 .money span { display: block; font-size: 9px; color: var(--muted); margin-bottom: 7px; }
 .money strong { font-size: 21px; color: var(--gold); font-weight: 600; }
-.grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; margin-bottom: 10px; }
+.next { margin-bottom: 10px; }\n.next h3 { margin: 0; font-size: 17px; color: var(--green); }\n.next-reason { margin: 7px 0 0; color: #cbd1c4; font-size: 11px; line-height: 1.5; }\n.next-more { display: grid; gap: 7px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #242920; }\n.next-item { display: grid; grid-template-columns: 150px 1fr; gap: 12px; font-size: 10px; line-height: 1.45; }\n.next-item b { font-weight: 600; }\n.next-item span { color: var(--muted); }\n.grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; margin-bottom: 10px; }
 .skills { display: grid; gap: 9px; }
 .skill { display: grid; grid-template-columns: 78px 1fr 24px; align-items: center; gap: 9px; font-size: 11px; }
 .track { height: 5px; background: #262b23; border-radius: 3px; overflow: hidden; }
